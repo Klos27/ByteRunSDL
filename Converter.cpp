@@ -384,7 +384,7 @@ void Converter::ByteRunCoderRGB() {
  Nalezy zmienic na try catcha
  w przypadku zlej alokacji jest rzucany wyjatek
 */
-  Uint8 *pstart = tab;
+//  Uint8 *pstart = tab;
   Uint8 *kanalR = tab;
   Uint8 *kanalG = tab + numOfPixels;
   Uint8 *kanalB = tab + ( 2 * numOfPixels);
@@ -451,7 +451,7 @@ void Converter::ByteRunCoderRGB() {
 void Converter::ByteRunCoderBlackNWhite() {
 
 
-  int x = 0;
+  //int x = 0;
 
  }
 void Converter::ByteRunDecoder(){

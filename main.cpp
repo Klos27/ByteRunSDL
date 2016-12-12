@@ -1,19 +1,31 @@
-#include "mainwindow.h"
-#include <QApplication>
 #include <SDL/SDL.h>
-
+#include "Converter.h"
 using namespace std;
 int main(int argc, char *argv[])
 {
+  Converter klasa;
 
-  // console output
-  freopen("CON", "wt", stdout);
-  freopen("CON", "wt", stderr);
+  klasa.byterun = true;
+  klasa.BMPtoAB = true;
+  klasa.blacknWhite = false;
 
+  if(klasa.BMPtoAB == true){
+    klasa.inputFileName = "img1.bmp";
+    klasa.outputFileName = "output.ab";
+  } else {
+    klasa.inputFileName = "output.ab";
+    klasa.outputFileName = "output.bmp";
+  }
 
-    QApplication a(argc, argv);
-    MainWindow w;
-    w.show();
+  klasa.openFile();
+  klasa.createHeader();
+  klasa.ByteRun();
 
-    return a.exec();
+  klasa.clear();
+  // fileOut.close();
+  // fileIn.close();
+  // SDL_FreeSurface(klasa.img);
+  // klasa.img = NULL;
+
+    return 0;
 }

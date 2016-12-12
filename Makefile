@@ -1,11 +1,10 @@
-CFLAGS=-Wall -std=c++14 
+CFLAGS=-Wall -std=c++14
 
 ifdef DEBUG
-	CFLAGS+=-g3 
+	CFLAGS+=-g3
 endif
 
 all:
-	g++ $(CFLAGS) -o exec main.cpp `sdl-config --cflags --libs`
-	
-run:
-	gnome-terminal -e ./exec
+	g++ $(CFLAGS) -o exec main.cpp Converter.cpp `sdl-config --cflags --libs`
+
+
