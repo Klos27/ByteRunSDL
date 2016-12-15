@@ -6,12 +6,13 @@ int main(int argc, char *argv[])
   Converter klasa;
 
   klasa.byterun = true;
- klasa.BMPtoAB = false;
- //klasa.BMPtoAB = true;
-  klasa.blacknWhite = false;
+          klasa.BMPtoAB = false;
+    //klasa.BMPtoAB = true;
+            klasa.blacknWhite = false;
+    klasa.blacknWhite = true;
 
   if(klasa.BMPtoAB == true){
-    klasa.inputFileName = "img4.bmp";
+    klasa.inputFileName = "img7.bmp";
     klasa.outputFileName = "output.ab";
   } else {
     klasa.inputFileName = "output.ab";

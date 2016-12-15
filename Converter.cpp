@@ -28,8 +28,8 @@ void Converter::createHeader() {
 */
 
     ///////------------------ tymczasowo bo cos sie sypie
-    header.width = 512;
-    header.height = 512;
+    header.width = 1920;
+    header.height = 1080;
     /////////////----------------
     img = SDL_CreateRGBSurface(0, header.width, header.height, 24, 0,0,0, 0);
     if (img == NULL) {
@@ -356,12 +356,15 @@ void Converter::ByteRun() {
     ByteRunDecoder();
 }
 void Converter::ByteRunCoderRGB() {
-    printf("Uint8 = %lu\n",sizeof(Uint8) );
-
+//    printf("Uint8 = %lu\n",sizeof(Uint8) );
   SDL_Color color;
   int numOfPixels = (img->w) * (img->h);
-  int size;
-  size = numOfPixels * 3;
+  int size; // rozmiar tablicy
+
+  if(blacknWhite)
+    size = numOfPixels;
+  else
+    size = numOfPixels * 3;
 
   Uint8 *tab = new Uint8[size]; // tablica z pixelami
   if (tab == nullptr) {
@@ -369,44 +372,97 @@ void Converter::ByteRunCoderRGB() {
               << std::endl;
     exit(1);
   }
-
+  if(blacknWhite){
+    Uint8 *p = tab;
+    for (int y = 0; y < img->h; ++y) {
+      for (int x = 0; x < img->w; ++x) {
+        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
+                   &color.b);
+        *p = ((color.r+color.g+color.b)/3);
+        p++;
+      }
+    }
+  } else {
+  // Ładowanie BMP do tab (najpeirw same R, potem same G, potem same B);
   Uint8 *kanalR = tab;
-  Uint8 *start  = tab;
   Uint8 *kanalG = tab + numOfPixels;
   Uint8 *kanalB = tab + ( 2 * numOfPixels);
-  printf("adres tab %p , adres tab+1 %d , adres tab+2 %d\n", kanalR,(int)(kanalG-kanalR),(int)(kanalB-kanalR) );
-int i = 0;
-  for (int y = 0; y < img->h; ++y) {
-    for (int x = 0; x < img->w; ++x) {
-      SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                 &color.b);
-  //printf("char color.r = %c ; /8 = %c ; int = %u , int/8 = %u\n", color.r, color.r/8, color.r, color.r/8);
-    //  std::cout << "color. r " << color.r << " color.r /8 = " << color.r/8 << std::endl;
-    /*  *kanalR = color.r;
-      *kanalG = 0;//color.g;
-      *kanalB = 0;//color.b;
-    */
 
-      *start = color.r;start++;
-      *start = color.g;start++;
-      *start = color.b;start++;
-      i++;
-      //kanalR++;kanalG++;kanalB++;i++;
+    for (int y = 0; y < img->h; ++y) {
+      for (int x = 0; x < img->w; ++x) {
+        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g, &color.b);
+        *kanalR = color.r;
+        *kanalG = color.g;
+        *kanalB = color.b;
+        kanalR++;kanalG++;kanalB++;
+      }
     }
   }
 
-printf("skonczylem tablice; i = %d\n", i);
-i = 0;
-while (i < size){
-
-    //  fileOut << tab[i];
+  int i = 0;
+  char wypisz = 0;
+  // dziala
+  // while (i < size){
+  //     fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+  //     i++;
+  // }
+  while (i < size){
+  //  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
+  //  to mierzymy dlugosc sekwencji
+    if ((i < size-1) && (tab[i] == tab[i+1])){
+  // pomiar dlugosci sekwencji
+      int len = 0;
+      // maksymalna dlugosc sekwencji = 127
+      while ((i+len < size-1) && (tab[i+len] == tab[i+len+1]) && (len < 127)){
+        len++;
+      }
+      std::cout << "powtorz" << std::endl;
+      //wypisz do pliku
+      //len = 0-len;
+      //fileOut.write((char*)&len, 1);
+    //  fileOut.write((char*)&tab[i],1);
+      //fileOut << (signed char)-len << tab[i];
+      wypisz = (char)-len;
+      fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
       fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
-
       //przesun wskaznik o dlugosc sekwencji
-      i ++;
+      //len = -len;
+      i += len+1;
+    }
+    //sekwencja roznych wartosci
+    else{
+      //zmierz dlugosc sekwencji
+      // maksymalna dlugosc = 127
+      int len=0;
+      while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 127)){
+        len++;
+      }
+      std::cout <<"przepisz i= " << i  << "len = " << len << std::endl;
+      //dodajemy ostatni bajt, jezeli jest taki sam, w celu lepszej kompresji
+      if ((i+len == size-1) && (len < 127)){
+        len++;
+      }
 
+      //wypisz spakowana sekwencje
+      //fileOut.write((char*)&len,1);
+      // fileOut << (signed char)(len-1);
+      len--;
+      wypisz = (char)len;
+      fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
+      for (int j=0; j<len+1; j++){
+        //fileOut << (Uint8)tab[i+j];
+        //fileOut.write(reinterpret_cast<char *>(&tab[i+j]), 1);
+        fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+        //fileOut.write((char*)&tab[i+j],1);
+        i++;
+      }
+      //przesun wskaznik o dlugosc sekwencji
+      //i += len;
+    }
   }
-  printf("skonczylem zapis plik; i = %d\n", i);
+
+
+
 
 
 
@@ -418,7 +474,12 @@ void Converter::ByteRunCoderBlackNWhite() {
 void Converter::ByteRunDecoder(){
 
   int numOfPixels = (img->w) * (img->h);
-  int size = numOfPixels *3;
+  int size;
+  if(blacknWhite)
+    size = numOfPixels;
+  else
+    size = numOfPixels *3;
+
   int i = 0;
   Uint8 p;
 
@@ -428,14 +489,61 @@ void Converter::ByteRunDecoder(){
               << std::endl;
     exit(1);
   }
+  // while (i < size){
+  //     fileIn.read(reinterpret_cast<char *>(&tab[i]), 1);
+  //     i++;
+  // }
+//--------------------------------------------------------------
+signed char len;
+
+//dopoki wszystkie bajty nie sa zdekompresowane
   while (i < size){
+//reinterpret_cast<char *>(&len)
+      fileIn.read(reinterpret_cast<char *>(&len), 1);
+      //fileIn >> len;
+      //std::cout << "len char: " << len << " len int: " << (int)len << std::endl;
+      //kod pusty
+      if (len == -128){
+        i++;
+      }
+      //sekwencja powtarzajacych sie bajtow
+      else if (len < 0){
+      fileIn.read(reinterpret_cast<char *>(&p), 1);
     //  fileIn >> p;
-      fileIn.read(reinterpret_cast<char *>(&tab[i]), 1);
-    //  tab[i] = p;
-      i++;
+        for (int j=0; j< ((int)-(len))+1; j++){
+        //  p = 'a';
+         tab[i] = p;
+         i++;
+         //dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
+        }
+        //i += (int)len;
+      }
+      //sekwencja roznych bajtow
+      else{
+        // kopiowanie bajtow
+        for (int j=0; j<((int)(len))+1; j++){
+          fileIn.read(reinterpret_cast<char *>(&p), 1);
+        //  fileIn >> p;
+        //  p = 'k';
+        tab[i] = p;
+        i++;
+        // dekoder_tmp << p;
+        //  dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
+        }
+
+      //  i += (int)len;
+      }
   }
 
 
+
+
+
+
+
+
+
+//--------------------------------------------------------------
   printf("skonczylem plik tmp; i = %d\n", i);
   i=0;
     // zapisywanie do SDL_Surface
@@ -443,29 +551,54 @@ void Converter::ByteRunDecoder(){
     SDL_Color color;
     Uint32 pixel;
     int height = img->h, width = img->w;
-    //
-    // Uint8 *kanalR = tab;
-    // Uint8 *kanalG = tab + numOfPixels;
-    // Uint8 *kanalB = tab + ( 2 * numOfPixels);
-    Uint8 *start = tab;
+
+  if(blacknWhite){
+    Uint8 *pstart = tab;
     for (int y = 0; y < height; ++y) {
       for (int x = 0; x < width; ++x) {
-/*
-        color.r = *kanalR;
-        color.g = *kanalG;
-        color.b = *kanalB;*/
-        color.r = *(start++);
-        color.g = *(start++);
-        color.b = *(start++);
+        color.r = *pstart;
+        color.g = *pstart;
+        color.b = *pstart;
+        // color.r = *(start++);
+        // color.g = *(start++);
+        // color.b = *(start++);
+        pstart++;
         i++;
 
 
-      //  kanalR++;kanalG++;kanalB++;
+        //kanalR++;kanalG++;kanalB++;
         pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
         putpixel(img, x, y, pixel);
         i++;
       }
     }
+
+
+
+
+  } else {
+    Uint8 *kanalR = tab;
+    Uint8 *kanalG = tab + numOfPixels;
+    Uint8 *kanalB = tab + ( 2 * numOfPixels);
+  //  Uint8 *start = tab;
+    for (int y = 0; y < height; ++y) {
+      for (int x = 0; x < width; ++x) {
+        color.r = *kanalR;
+        color.g = *kanalG;
+        color.b = *kanalB;
+        // color.r = *(start++);
+        // color.g = *(start++);
+        // color.b = *(start++);
+        i++;
+
+
+        kanalR++;kanalG++;kanalB++;
+        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
+        putpixel(img, x, y, pixel);
+        i++;
+      }
+    }
+  }
     printf("skonczylem SDLSurface; i = %d\n", i);
     SDL_UnlockSurface(img);
 
