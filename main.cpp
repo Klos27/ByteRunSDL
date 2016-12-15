@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
   klasa.blacknWhite = false;
 
   if(klasa.BMPtoAB == true){
-    klasa.inputFileName = "img2.bmp";
+    klasa.inputFileName = "img4.bmp";
     klasa.outputFileName = "output.ab";
   } else {
     klasa.inputFileName = "output.ab";

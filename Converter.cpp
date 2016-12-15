@@ -31,7 +31,7 @@ void Converter::createHeader() {
     header.width = 512;
     header.height = 512;
     /////////////----------------
-    img = SDL_CreateRGBSurface(0, header.width, header.height, 24, 0, 0, 0, 0);
+    img = SDL_CreateRGBSurface(0, header.width, header.height, 24, 0,0,0, 0);
     if (img == NULL) {
       std::cerr << "SDL_CreateRGBSurface() failed" << std::endl;
       exit(1);
@@ -370,7 +370,6 @@ void Converter::ByteRunCoderRGB() {
     exit(1);
   }
 
-
   Uint8 *kanalR = tab;
   Uint8 *start  = tab;
   Uint8 *kanalG = tab + numOfPixels;
@@ -387,9 +386,10 @@ int i = 0;
       *kanalG = 0;//color.g;
       *kanalB = 0;//color.b;
     */
-      *(start++) = color.r;
-      *(start++) = color.g;
-      *(start++) = color.b;
+
+      *start = color.r;start++;
+      *start = color.g;start++;
+      *start = color.b;start++;
       i++;
       //kanalR++;kanalG++;kanalB++;i++;
     }
@@ -399,7 +399,9 @@ printf("skonczylem tablice; i = %d\n", i);
 i = 0;
 while (i < size){
 
-      fileOut << tab[i];
+    //  fileOut << tab[i];
+      fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+
       //przesun wskaznik o dlugosc sekwencji
       i ++;
 
@@ -427,8 +429,9 @@ void Converter::ByteRunDecoder(){
     exit(1);
   }
   while (i < size){
-      fileIn >> p;
-      tab[i] = p;
+    //  fileIn >> p;
+      fileIn.read(reinterpret_cast<char *>(&tab[i]), 1);
+    //  tab[i] = p;
       i++;
   }
 
@@ -440,10 +443,10 @@ void Converter::ByteRunDecoder(){
     SDL_Color color;
     Uint32 pixel;
     int height = img->h, width = img->w;
-
-    Uint8 *kanalR = tab;
-    Uint8 *kanalG = tab + numOfPixels;
-    Uint8 *kanalB = tab + ( 2 * numOfPixels);
+    //
+    // Uint8 *kanalR = tab;
+    // Uint8 *kanalG = tab + numOfPixels;
+    // Uint8 *kanalB = tab + ( 2 * numOfPixels);
     Uint8 *start = tab;
     for (int y = 0; y < height; ++y) {
       for (int x = 0; x < width; ++x) {
@@ -457,7 +460,7 @@ void Converter::ByteRunDecoder(){
         i++;
 
 
-        kanalR++;kanalG++;kanalB++;
+      //  kanalR++;kanalG++;kanalB++;
         pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
         putpixel(img, x, y, pixel);
         i++;
