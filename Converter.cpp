@@ -28,8 +28,8 @@ void Converter::createHeader() {
 */
 
     ///////------------------ tymczasowo bo cos sie sypie
-    header.width = 1;
-    header.height = 1;
+    header.width = 1920;
+    header.height = 1080;
     /////////////----------------
     img = SDL_CreateRGBSurface(0, header.width, header.height, 24, 0,0,0, 0);
     if (img == NULL) {
@@ -364,25 +364,25 @@ void Converter::ByteRunCoder() {
 
   Uint8 *tab = new Uint8[size]; // tablica z pixelami
   if (tab == nullptr) {
-    std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table"
-              << std::endl;
+    std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table" << std::endl;
     exit(1);
   }
+  // Ładowanie BMP do tab (srednia z 3 kolorow -> Black & White)
   if(blacknWhite){
     Uint8 *p = tab;
     for (int y = 0; y < img->h; ++y) {
       for (int x = 0; x < img->w; ++x) {
-        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                   &color.b);
+        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g, &color.b);
         *p = ((color.r+color.g+color.b)/3);
         p++;
       }
     }
-  } else {
-  // Ładowanie BMP do tab (najpeirw same R, potem same G, potem same B);
-  Uint8 *kanalR = tab;
-  Uint8 *kanalG = tab + numOfPixels;
-  Uint8 *kanalB = tab + ( 2 * numOfPixels);
+  }
+  else {
+    // Ładowanie BMP do tab (najpeirw same R, potem same G, potem same B);
+    Uint8 *kanalR = tab;
+    Uint8 *kanalG = tab + numOfPixels;
+    Uint8 *kanalB = tab + ( 2 * numOfPixels);
 
     for (int y = 0; y < img->h; ++y) {
       for (int x = 0; x < img->w; ++x) {
@@ -396,35 +396,31 @@ void Converter::ByteRunCoder() {
   }
 
   int i = 0;
-  char wypisz = 0;
-
+  signed char wypisz = 0;
+  // ByteRun po kanałach R,G,B
   while (i < size){
-  //  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
-  //  to mierzymy dlugosc sekwencji
+    //  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
+    //  to mierzymy dlugosc sekwencji
     if ((i < size-1) && (tab[i] == tab[i+1])){
-    // pomiar dlugosci sekwencji
-      int len = 0;
-      // maksymalna dlugosc sekwencji = 127
+      int len = 1;
+      // maksymalna dlugosc sekwencji -> 128
       while ((i+len < size-1) && (tab[i+len] == tab[i+len+1]) && (len < 127)){
         len++;
       }
-      //std::cout << "powtorz : " << len << std::endl;
 
       wypisz = (char)-len;
       fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
       fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
-      //przesun wskaznik o dlugosc sekwencji
+      //przesun wskaznik
       i += len+1;
     }
     //sekwencja roznych wartosci
-    else{
-      //zmierz dlugosc sekwencji
-      // maksymalna dlugosc = 128
-      int len=0;
+    else {
+      // maksymalna dlugosc -> 128
+      int len=1;
       while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 128)){
         len++;
       }
-    //  std::cout <<"przepisz i= " << i  << "len = " << len << std::endl;
       //dodajemy ostatni bajt, jezeli jest taki sam, w celu lepszej kompresji
       if ((i+len == size-1) && (len < 128)){
         len++;
@@ -433,25 +429,18 @@ void Converter::ByteRunCoder() {
       wypisz = (char)len;
       fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
       for (int j=0; j<len+1; j++){
-        //fileOut.write(reinterpret_cast<char *>(&tab[i+j]), 1);
         // tab[i] bo i sie zmienia z kazdym przejsciem petli
         fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
-
         i++;
       }
     }
   }
-
-
-
-
-
-
 }
 
 void Converter::ByteRunDecoder(){
+
   int numOfPixels = (img->w) * (img->h);
-  int size;
+  int size; // rozmiar tablicy
 
   if(blacknWhite)
     size = numOfPixels;
@@ -463,22 +452,21 @@ void Converter::ByteRunDecoder(){
 
   Uint8 *tab = new Uint8[size]; // tablica z pixelami
   if (tab == nullptr) {
-    std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table"
-              << std::endl;
+    std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table" << std::endl;
     exit(1);
   }
 
-//--------------------------------------------------------------
-signed char len;
+//-------------- Dekompresja
+  signed char len;
 
-//dopoki wszystkie bajty nie sa zdekompresowane
+  //Dekompresja Byterun do tablicy RGB lub Black&White
   while (i < size){
       fileIn.read(reinterpret_cast<char *>(&len), 1);
-      //kod pusty
+      // Kod pusty, nie powinno sie zdarzyc
       if (len == -128){
         i++;
       }
-      //sekwencja powtarzajacych sie bajtow
+      // Powtorzenie
       else if (len < 0){
         fileIn.read(reinterpret_cast<char *>(&p), 1);
         for (int j=0; j< ((int)-(len))+1; j++){
@@ -486,9 +474,8 @@ signed char len;
            i++;
         }
       }
-      //sekwencja roznych bajtow
-      else{
-        // kopiowanie bajtow
+      //  Kopiowanie (len>=0)
+      else {
         for (int j=0; j<((int)(len))+1; j++){
           fileIn.read(reinterpret_cast<char *>(&p), 1);
           tab[i] = p;
@@ -498,58 +485,39 @@ signed char len;
   }
 
 //--------------------------------------------------------------
-  printf("skonczylem plik tmp; i = %d\n", i);
-  i=0;
-    // zapisywanie do SDL_Surface
+    // Zapisywanie do SDL_Surface
     SDL_LockSurface(img);
     SDL_Color color;
     Uint32 pixel;
     int height = img->h, width = img->w;
 
-  if(blacknWhite){
-    Uint8 *pstart = tab;
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-        color.r = *pstart;
-        color.g = *pstart;
-        color.b = *pstart;
-        // color.r = *(start++);
-        // color.g = *(start++);
-        // color.b = *(start++);
-        pstart++;
-        i++;
-
-
-        //kanalR++;kanalG++;kanalB++;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
-        i++;
+    if(blacknWhite){
+      Uint8 *pstart = tab;
+      for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+          color.r = *pstart;
+          color.g = *pstart;
+          color.b = *pstart;
+          pstart++;
+          pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
+          putpixel(img, x, y, pixel);
+        }
       }
     }
-
-
-
-
-  } else {
-    Uint8 *kanalR = tab;
-    Uint8 *kanalG = tab + numOfPixels;
-    Uint8 *kanalB = tab + ( 2 * numOfPixels);
-  //  Uint8 *start = tab;
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-        color.r = *kanalR;
-        color.g = *kanalG;
-        color.b = *kanalB;
-        i++;
-
-
-        kanalR++;kanalG++;kanalB++;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
+    else {
+      Uint8 *kanalR = tab;
+      Uint8 *kanalG = tab + numOfPixels;
+      Uint8 *kanalB = tab + ( 2 * numOfPixels);
+      for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+          color.r = *kanalR; kanalR++;
+          color.g = *kanalG; kanalG++;
+          color.b = *kanalB; kanalB++;
+          pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
+          putpixel(img, x, y, pixel);
+        }
       }
     }
-  }
-    printf("skonczylem SDLSurface; i = %d\n", i);
     SDL_UnlockSurface(img);
 
     // SDL_SaveBMP
@@ -557,7 +525,169 @@ signed char len;
 
 }
 
+/* usprawnienie tego cpy:
+int i = 0;
+char wypisz = 0;
+// ByteRun
+while (i < size){
+//  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
+//  to mierzymy dlugosc sekwencji
+  if ((i < size-1) && (tab[i] == tab[i+1])){
+    // pomiar dlugosci sekwencji
+    int len = 0;
+    // maksymalna dlugosc sekwencji = 127
+    while ((i+len < size-1) && (tab[i+len] == tab[i+len+1]) && (len < 127)){
+      len++;
+    }
 
+    wypisz = (char)-len;
+    fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
+    fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+    //przesun wskaznik o dlugosc sekwencji
+    i += len+1;
+  }
+  //sekwencja roznych wartosci
+  else{
+    //zmierz dlugosc sekwencji
+    // maksymalna dlugosc = 128
+    int len=0;
+    while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 128)){
+      len++;
+    }
+  //  std::cout <<"przepisz i= " << i  << "len = " << len << std::endl;
+    //dodajemy ostatni bajt, jezeli jest taki sam, w celu lepszej kompresji
+    if ((i+len == size-1) && (len < 128)){
+      len++;
+    }
+    len--;
+    wypisz = (char)len;
+    fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
+    for (int j=0; j<len+1; j++){
+      //fileOut.write(reinterpret_cast<char *>(&tab[i+j]), 1);
+      // tab[i] bo i sie zmienia z kazdym przejsciem petli
+      fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+
+      i++;
+    }
+  }
+}
+
+
+
+
+
+
+}
+
+void Converter::ByteRunDecoder(){
+int numOfPixels = (img->w) * (img->h);
+int size;
+
+if(blacknWhite)
+  size = numOfPixels;
+else
+  size = numOfPixels *3;
+
+int i = 0;
+Uint8 p;
+
+Uint8 *tab = new Uint8[size]; // tablica z pixelami
+if (tab == nullptr) {
+  std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table"
+            << std::endl;
+  exit(1);
+}
+
+//--------------------------------------------------------------
+signed char len;
+
+//dopoki wszystkie bajty nie sa zdekompresowane
+while (i < size){
+    fileIn.read(reinterpret_cast<char *>(&len), 1);
+    //kod pusty
+    if (len == -128){
+      i++;
+    }
+    //sekwencja powtarzajacych sie bajtow
+    else if (len < 0){
+      fileIn.read(reinterpret_cast<char *>(&p), 1);
+      for (int j=0; j< ((int)-(len))+1; j++){
+         tab[i] = p;
+         i++;
+      }
+    }
+    //sekwencja roznych bajtow
+    else{
+      // kopiowanie bajtow
+      for (int j=0; j<((int)(len))+1; j++){
+        fileIn.read(reinterpret_cast<char *>(&p), 1);
+        tab[i] = p;
+        i++;
+      }
+    }
+}
+
+//--------------------------------------------------------------
+printf("skonczylem plik tmp; i = %d\n", i);
+i=0;
+  // zapisywanie do SDL_Surface
+  SDL_LockSurface(img);
+  SDL_Color color;
+  Uint32 pixel;
+  int height = img->h, width = img->w;
+
+if(blacknWhite){
+  Uint8 *pstart = tab;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      color.r = *pstart;
+      color.g = *pstart;
+      color.b = *pstart;
+      // color.r = *(start++);
+      // color.g = *(start++);
+      // color.b = *(start++);
+      pstart++;
+      i++;
+
+
+      //kanalR++;kanalG++;kanalB++;
+      pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
+      putpixel(img, x, y, pixel);
+      i++;
+    }
+  }
+
+
+
+
+} else {
+  Uint8 *kanalR = tab;
+  Uint8 *kanalG = tab + numOfPixels;
+  Uint8 *kanalB = tab + ( 2 * numOfPixels);
+//  Uint8 *start = tab;
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      color.r = *kanalR;
+      color.g = *kanalG;
+      color.b = *kanalB;
+      i++;
+
+
+      kanalR++;kanalG++;kanalB++;
+      pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
+      putpixel(img, x, y, pixel);
+    }
+  }
+}
+  printf("skonczylem SDLSurface; i = %d\n", i);
+  SDL_UnlockSurface(img);
+
+  // SDL_SaveBMP
+  SDL_SaveBMP(img, outputFileName.c_str());
+
+}
+
+*/
 
 
 
