@@ -52,8 +52,7 @@ public:
   // *************************
   //****
 private:
-  void ByteRunCoderRGB();
-  void ByteRunCoderBlackNWhite();
+  void ByteRunCoder();
   void ByteRunDecoder();
 
 

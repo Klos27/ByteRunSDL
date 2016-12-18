@@ -28,8 +28,8 @@ void Converter::createHeader() {
 */
 
     ///////------------------ tymczasowo bo cos sie sypie
-    header.width = 1920;
-    header.height = 1080;
+    header.width = 1;
+    header.height = 1;
     /////////////----------------
     img = SDL_CreateRGBSurface(0, header.width, header.height, 24, 0,0,0, 0);
     if (img == NULL) {
@@ -348,15 +348,11 @@ void Converter::putpixel(SDL_Surface *surface, int x, int y, Uint32 pixel) {
 //---------------------------------------------------------------------------
 void Converter::ByteRun() {
   if (BMPtoAB)
-    if (blacknWhite)
-      ByteRunCoderBlackNWhite();
-    else
-      ByteRunCoderRGB();
+    ByteRunCoder();
   else
     ByteRunDecoder();
 }
-void Converter::ByteRunCoderRGB() {
-//    printf("Uint8 = %lu\n",sizeof(Uint8) );
+void Converter::ByteRunCoder() {
   SDL_Color color;
   int numOfPixels = (img->w) * (img->h);
   int size; // rozmiar tablicy
@@ -401,63 +397,48 @@ void Converter::ByteRunCoderRGB() {
 
   int i = 0;
   char wypisz = 0;
-  // dziala
-  // while (i < size){
-  //     fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
-  //     i++;
-  // }
+
   while (i < size){
   //  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
   //  to mierzymy dlugosc sekwencji
     if ((i < size-1) && (tab[i] == tab[i+1])){
-  // pomiar dlugosci sekwencji
+    // pomiar dlugosci sekwencji
       int len = 0;
       // maksymalna dlugosc sekwencji = 127
       while ((i+len < size-1) && (tab[i+len] == tab[i+len+1]) && (len < 127)){
         len++;
       }
-      std::cout << "powtorz" << std::endl;
-      //wypisz do pliku
-      //len = 0-len;
-      //fileOut.write((char*)&len, 1);
-    //  fileOut.write((char*)&tab[i],1);
-      //fileOut << (signed char)-len << tab[i];
+      //std::cout << "powtorz : " << len << std::endl;
+
       wypisz = (char)-len;
       fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
       fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
       //przesun wskaznik o dlugosc sekwencji
-      //len = -len;
       i += len+1;
     }
     //sekwencja roznych wartosci
     else{
       //zmierz dlugosc sekwencji
-      // maksymalna dlugosc = 127
+      // maksymalna dlugosc = 128
       int len=0;
-      while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 127)){
+      while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 128)){
         len++;
       }
-      std::cout <<"przepisz i= " << i  << "len = " << len << std::endl;
+    //  std::cout <<"przepisz i= " << i  << "len = " << len << std::endl;
       //dodajemy ostatni bajt, jezeli jest taki sam, w celu lepszej kompresji
-      if ((i+len == size-1) && (len < 127)){
+      if ((i+len == size-1) && (len < 128)){
         len++;
       }
-
-      //wypisz spakowana sekwencje
-      //fileOut.write((char*)&len,1);
-      // fileOut << (signed char)(len-1);
       len--;
       wypisz = (char)len;
       fileOut.write(reinterpret_cast<char *>(&wypisz), 1);
       for (int j=0; j<len+1; j++){
-        //fileOut << (Uint8)tab[i+j];
         //fileOut.write(reinterpret_cast<char *>(&tab[i+j]), 1);
+        // tab[i] bo i sie zmienia z kazdym przejsciem petli
         fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
-        //fileOut.write((char*)&tab[i+j],1);
+
         i++;
       }
-      //przesun wskaznik o dlugosc sekwencji
-      //i += len;
     }
   }
 
@@ -467,14 +448,11 @@ void Converter::ByteRunCoderRGB() {
 
 
 }
-void Converter::ByteRunCoderBlackNWhite() {
-  ByteRunCoderRGB();
-}
 
 void Converter::ByteRunDecoder(){
-
   int numOfPixels = (img->w) * (img->h);
   int size;
+
   if(blacknWhite)
     size = numOfPixels;
   else
@@ -489,59 +467,35 @@ void Converter::ByteRunDecoder(){
               << std::endl;
     exit(1);
   }
-  // while (i < size){
-  //     fileIn.read(reinterpret_cast<char *>(&tab[i]), 1);
-  //     i++;
-  // }
+
 //--------------------------------------------------------------
 signed char len;
 
 //dopoki wszystkie bajty nie sa zdekompresowane
   while (i < size){
-//reinterpret_cast<char *>(&len)
       fileIn.read(reinterpret_cast<char *>(&len), 1);
-      //fileIn >> len;
-      //std::cout << "len char: " << len << " len int: " << (int)len << std::endl;
       //kod pusty
       if (len == -128){
         i++;
       }
       //sekwencja powtarzajacych sie bajtow
       else if (len < 0){
-      fileIn.read(reinterpret_cast<char *>(&p), 1);
-    //  fileIn >> p;
+        fileIn.read(reinterpret_cast<char *>(&p), 1);
         for (int j=0; j< ((int)-(len))+1; j++){
-        //  p = 'a';
-         tab[i] = p;
-         i++;
-         //dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
+           tab[i] = p;
+           i++;
         }
-        //i += (int)len;
       }
       //sekwencja roznych bajtow
       else{
         // kopiowanie bajtow
         for (int j=0; j<((int)(len))+1; j++){
           fileIn.read(reinterpret_cast<char *>(&p), 1);
-        //  fileIn >> p;
-        //  p = 'k';
-        tab[i] = p;
-        i++;
-        // dekoder_tmp << p;
-        //  dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
+          tab[i] = p;
+          i++;
         }
-
-      //  i += (int)len;
       }
   }
-
-
-
-
-
-
-
-
 
 //--------------------------------------------------------------
   printf("skonczylem plik tmp; i = %d\n", i);
@@ -586,16 +540,12 @@ signed char len;
         color.r = *kanalR;
         color.g = *kanalG;
         color.b = *kanalB;
-        // color.r = *(start++);
-        // color.g = *(start++);
-        // color.b = *(start++);
         i++;
 
 
         kanalR++;kanalG++;kanalB++;
         pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
         putpixel(img, x, y, pixel);
-        i++;
       }
     }
   }
@@ -613,368 +563,24 @@ signed char len;
 
 
 
+
+
+
+
+
+
 // end
 
 
-/*
-void Converter::ByteRunDecoder(){
 
-  // RGB
-  // mamy plik zakodowany full najpierw R potem G potem B
-  // tworzymy nowy plik i dekodujemy ten do kolejnego
-  // wczytujemy po kolei najpeirw piksele R, potem G, potem B
-  // czyli 3 petle for dla kazdego kanalu
-  std::fstream dekoder_tmp;
-  dekoder_tmp.open("dekoder_tmp", std::ios::out | std::ios::binary);
-  if (!dekoder_tmp) {
-    fputs("File error", stderr);
-    exit(1);
-  }
-
-  int numOfPixels = (img->w) * (img->h);
-  int size = numOfPixels *3;
-  int i = 0;
-  signed char len;
-  Uint8 p;
-//  char tmp;
-
-//dopoki wszystkie bajty nie sa zdekompresowane
-  while (i < size){
-//reinterpret_cast<char *>(&len)
-    //  fileIn.read(reinterpret_cast<char *>(&len), 1);
-      fileIn >> len;
-      std::cout << "len char: " << len << " len int: " << (int)len << std::endl;
-      //kod pusty
-      if (len == -128){
-        i++;
-      }
-      //sekwencja powtarzajacych sie bajtow
-      else if (len < 0){
-      //fileIn.read(reinterpret_cast<char *>(&p), 1);
-      fileIn >> p;
-        for (int j=0; j< ((int)-(len))+1; j++){
-        //  p = 'a';
-         dekoder_tmp << p;
-         //dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
-        }
-        i += (int)(-len);
-      }
-      //sekwencja roznych bajtow
-      else{
-        // kopiowanie bajtow
-        for (int j=0; j<((int)(len))+1; j++){
-          //fileIn.read(reinterpret_cast<char *>(&p), 1);
-          fileIn >> p;
-        //  p = 'k';
-         dekoder_tmp << p;
-        //  dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
-        }
-
-        i += (int)len;
-      }
-  }
-  dekoder_tmp.close();
-  dekoder_tmp.open("dekoder_tmp", std::ios::in | std::ios::binary);
-  if (!dekoder_tmp) {
-    fputs("File error", stderr);
-    exit(1);
-}
-  printf("skonczylem plik tmp;\n");
-    // zapisywanie do SDL_Surface
-    SDL_LockSurface(img);
-    SDL_Color color;
-    Uint32 pixel;
-    int height = img->h, width = img->w;
-    // przepisz R
-    color.g = 0;
-    color.b = 0;
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-        //color.r << dekoder_tmp;
-        //dekoder_tmp.read(reinterpret_cast<char *>(&p), 1);
-        dekoder_tmp >> p;
-        color.r = p;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
-      }
-    }
-    // przepisz G
-    color.r = 0;
-    color.b = 0;
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-       dekoder_tmp >> p;
-      //  dekoder_tmp.read(reinterpret_cast<char *>(&p), 1);
-        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                   &color.b);
-        color.g = p;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
-      }
-    }
-    // przepisz B
-    color.r = 0;
-    color.g = 0;
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-        dekoder_tmp >> p;
-      //  dekoder_tmp.read(reinterpret_cast<char *>(&p), 1);
-        SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                   &color.b);
-        color.b = p;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
-      }
-    }
-    SDL_UnlockSurface(img);
-    dekoder_tmp.close();
-
-    // SDL_SaveBMP
-    SDL_SaveBMP(img, outputFileName.c_str());
-
-
-
-
-}
-*/
-
-
-//v2
-/*
-void Converter::ByteRunCoderRGB() {
-    printf("Uint8 = %lu\n",sizeof(Uint8) );
-
-  // posiadam SDL_Surface *img -> załadowana bitmapa z pixelami
-  // img->w = width
-  // img->h = height
-  // lub mogę loadBMPtoTAB i wtedy mam tablice od 0 do n w Uint8
-  // ale to zajmuje dużo RAMu, ale nei trzeba obliczać indexów i
-  // zaoszczędzimy czas na funkcji getpixel
-  // pod fileIn mam uchwyt do pliku wejscie
-  // pod fileOut gotowy zapsis uchwyt z wklejonym headeerm
-
-  // byterun 0-127 -> przepisz 1-128 liczb
-  // -1 - -127 -> powtorz 2 - 128 liczb
-  // -128 -> no-op brak reakcji
-
-
-
-  // tworzymy tablice 3*w*h
-  // wpisujemy do niej kolory najpeirw całe R, potem G potem B
-  // odpalamy ByteRun na tej tablicy i do pliku.
-  // dzieki tm trzem kanalom mamy wieksze prawdopodobienstwo na udana kompresje
-
-  //=---=--=-=-=--= Programix
-
-  // Ładowanie BMP do tab (najpeirw same R, potem same G, potem same B);
-
-  SDL_Color color;
-  int numOfPixels = (img->w) * (img->h);
-  int size;
-  if(blacknWhite)
-    size = numOfPixels;
-  else
-    size = numOfPixels * 3;
-
-  Uint8 *tab = new Uint8[size]; // tablica z pixelami
-  if (tab == nullptr) {
-    std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table"
-              << std::endl;
-    exit(1);
-  }
-  /* /\
- Nalezy zmienic na try catcha
- w przypadku zlej alokacji jest rzucany wyjatek
-
-// przepisanie pixeli do tablicy
-//  Uint8 *pstart = tab;
-if(blacknWhite){
-  Uint8* p = tab;
-  for (int y = 0; y < img->h; ++y) {
-    for (int x = 0; x < img->w; ++x) {
-      SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                 &color.b);
-      *p = ((color.r+color.g+color.b)/3);
-      p++;
-    }
-  }
-} else {
-  Uint8 *kanalR = tab;
-
-  Uint8 *kanalG = tab + numOfPixels;
-  Uint8 *kanalB = tab + ( 2 * numOfPixels);
-  printf("adres tab %p , adres tab+1 %p , adres tab+2 %p\n", kanalR,kanalG,kanalB );
-
-  for (int y = 0; y < img->h; ++y) {
-    for (int x = 0; x < img->w; ++x) {
-      SDL_GetRGB(getpixel(img, x, y), img->format, &color.r, &color.g,
-                 &color.b);
-  //printf("char color.r = %c ; /8 = %c ; int = %u , int/8 = %u\n", color.r, color.r/8, color.r, color.r/8);
-    //  std::cout << "color. r " << color.r << " color.r /8 = " << color.r/8 << std::endl;
-      *kanalR = color.r;
-      *kanalG = color.g;
-      *kanalB = color.b;
-      kanalR++;kanalG++;kanalB++;
-    }
-  }
-}
-
-
-  // ByteRun dla RGB // w sumei tez dla BlackNWhite, tylko podamy inna tablice;
-  int i = 0;
-  //int size = 3 * numOfPixels;
-  // wykonujemy do konca talbicy
-  while (i < size){
-  //  jezeli nie jestesmy na ostatnim elemencie i element kolejny jest taki sam
-  //  to mierzymy dlugosc sekwencji
-    if ((i < size-1) && (tab[i] == tab[i+1])){
-  // pomiar dlugosci sekwencji
-      int len = 0;
-      // maksymalna dlugosc sekwencji = 127
-      while ((i+len < size-1) && (tab[i+len] == tab[i+len+1]) && (len < 127)){
-        len++;
-      }
-      //wypisz do pliku
-      //len = 0-len;
-      //fileOut.write((char*)&len, 1);
-    //  fileOut.write((char*)&tab[i],1);
-      fileOut << (signed char)-len << tab[i];
-      //przesun wskaznik o dlugosc sekwencji
-      i += len+1;
-    }
-    //sekwencja roznych wartosci
-    else{
-      //zmierz dlugosc sekwencji
-      // maksymalna dlugosc = 127
-      int len=0;
-      while ((i+len < size-1) && (tab[i+len] != tab[len+i+1]) && (len < 128)){
-        len++;
-      }
-      //dodajemy ostatni bajt, jezeli jest taki sam, w celu lepszej kompresji
-      if ((i+len == size-1) && (len < 128)){
-        len++;
-      }
-
-      //wypisz spakowana sekwencje
-      //fileOut.write((char*)&len,1);
-      fileOut << (signed char)(len-1);
-      for (int j=0; j<len; j++){
-        fileOut << (Uint8)tab[i+j];
-        //fileOut.write((char*)&tab[i+j],1);
-      }
-      //przesun wskaznik o dlugosc sekwencji
-      i += len;
-    }
-  }
-
-
-
-}
-void Converter::ByteRunCoderBlackNWhite() {
-  ByteRunCoderRGB();
-}
-
-void Converter::ByteRunDecoder(){
-
-  // RGB
-  // mamy plik zakodowany full najpierw R potem G potem B
-  // tworzymy nowy plik i dekodujemy ten do kolejnego
-  // wczytujemy po kolei najpeirw piksele R, potem G, potem B
-  // czyli 3 petle for dla kazdego kanalu
-  //std::fstream dekoder_tmp;
-  //dekoder_tmp.open("dekoder_tmp", std::ios::out | std::ios::binary);
-  // if (!dekoder_tmp) {
-  //   fputs("File error", stderr);
-  //   exit(1);
-  // }
-
-  int numOfPixels = (img->w) * (img->h);
-  int size = numOfPixels *3;
-
-  int i = 0;
-  signed char len;
-  Uint8 p;
-//  char tmp;
-
-Uint8 *tab = new Uint8[size]; // tablica z pixelami
-if (tab == nullptr) {
-  std::cerr << "Error in: loadBMPtoTab: unable to allocate memory for table"
-            << std::endl;
-  exit(1);
-}
-
-//dopoki wszystkie bajty nie sa zdekompresowane
-  while (i < size){
-//reinterpret_cast<char *>(&len)
-    //  fileIn.read(reinterpret_cast<char *>(&len), 1);
-      fileIn >> len;
-      std::cout << "len char: " << len << " len int: " << (int)len << std::endl;
-      //kod pusty
-      if (len == -128){
-        i++;
-      }
-      //sekwencja powtarzajacych sie bajtow
-      else if (len < 0){
-      //fileIn.read(reinterpret_cast<char *>(&p), 1);
-      fileIn >> p;
-        for (int j=0; j< ((int)-(len))+1; j++){
-        //  p = 'a';
-         tab[i] = p;
-         i++;
-         //dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
-        }
-        //i += (int)len;
-      }
-      //sekwencja roznych bajtow
-      else{
-        // kopiowanie bajtow
-        for (int j=0; j<((int)(len))+1; j++){
-          //fileIn.read(reinterpret_cast<char *>(&p), 1);
-          fileIn >> p;
-        //  p = 'k';
-        tab[i] = p;
-        i++;
-        // dekoder_tmp << p;
-        //  dekoder_tmp.write(reinterpret_cast<char *>(&p), 1);
-        }
-
-      //  i += (int)len;
-      }
-  }
-  //dekoder_tmp.close();
-  //dekoder_tmp.open("dekoder_tmp", std::ios::in | std::ios::binary);
-//   if (!dekoder_tmp) {
-//     fputs("File error", stderr);
-//     exit(1);
+// while (i < size){
+//     fileIn.read(reinterpret_cast<char *>(&tab[i]), 1);
+//     i++;
 // }
-  printf("skonczylem plik tmp;\n");
-    // zapisywanie do SDL_Surface
-    SDL_LockSurface(img);
-    SDL_Color color;
-    Uint32 pixel;
-    int height = img->h, width = img->w;
 
-    Uint8 *kanalR = tab;
-    Uint8 *kanalG = tab + numOfPixels;
-    Uint8 *kanalB = tab + ( 2 * numOfPixels);
 
-    for (int y = 0; y < height; ++y) {
-      for (int x = 0; x < width; ++x) {
-
-        color.r = *kanalR;
-        color.g = *kanalG;
-        color.b = *kanalB;
-        kanalR++;kanalG++;kanalB++;
-        pixel = SDL_MapRGB(img->format, color.r, color.g, color.b);
-        putpixel(img, x, y, pixel);
-      }
-    }
-    SDL_UnlockSurface(img);
-    //dekoder_tmp.close();
-
-    // SDL_SaveBMP
-    SDL_SaveBMP(img, outputFileName.c_str());
-
-}
-
-*/
+// dziala
+// while (i < size){
+//     fileOut.write(reinterpret_cast<char *>(&tab[i]), 1);
+//     i++;
+// }
